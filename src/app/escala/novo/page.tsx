@@ -17,6 +17,8 @@ export default function NovoEventoPage() {
   const [type, setType] = useState('service')
   const [date, setDate] = useState('')
   const [turnos, setTurnos] = useState<string[]>(['morning'])
+  const [eventTime, setEventTime] = useState('09:00')
+  const [arrivalTime, setArrivalTime] = useState('08:30')
   const [needsDrummer, setNeedsDrummer] = useState(true)
   const [needsBassist, setNeedsBassist] = useState(true)
   const [notes, setNotes] = useState('')
@@ -37,21 +39,18 @@ export default function NovoEventoPage() {
     setError('')
 
     for (const turno of turnos) {
-      const timeMap: Record<string, string> = {
-        morning: '09:00',
-        afternoon: '14:00',
-        evening: '19:00',
-      }
-      await supabase.from('events').insert([{
+      const { error } = await supabase.from('events').insert([{
         type,
         event_date: date,
-        event_time: timeMap[turno],
+        event_time: eventTime,
+        arrival_time: arrivalTime,
         period: turno,
         needs_drummer: needsDrummer,
         needs_bassist: needsBassist,
         notes,
         published: false,
       }])
+      if (error) { setError(error.message); setLoading(false); return }
     }
 
     setLoading(false)
@@ -59,9 +58,9 @@ export default function NovoEventoPage() {
   }
 
   const turnoOptions = [
-    { value: 'morning', label: 'Manha', emoji: '🌅', time: '09:00' },
-    { value: 'afternoon', label: 'Tarde', emoji: '☀️', time: '14:00' },
-    { value: 'evening', label: 'Noite', emoji: '🌙', time: '19:00' },
+    { value: 'morning', label: 'Manha', emoji: '🌅' },
+    { value: 'afternoon', label: 'Tarde', emoji: '☀️' },
+    { value: 'evening', label: 'Noite', emoji: '🌙' },
   ]
 
   return (
@@ -89,6 +88,19 @@ export default function NovoEventoPage() {
               <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Hora do evento</label>
+                <Input type="time" value={eventTime} onChange={e => setEventTime(e.target.value)} />
+                <p className="text-xs text-gray-400 mt-1">Horario de inicio do culto</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Hora de chegada</label>
+                <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
+                <p className="text-xs text-gray-400 mt-1">Horario que o musico deve chegar</p>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Turno(s)</label>
               <p className="text-xs text-gray-400 mb-3">Selecione um ou mais turnos para este evento</p>
@@ -106,7 +118,6 @@ export default function NovoEventoPage() {
                   >
                     <span className="text-2xl">{t.emoji}</span>
                     <span className="text-sm font-medium">{t.label}</span>
-                    <span className="text-xs text-gray-400">{t.time}</span>
                   </button>
                 ))}
               </div>
