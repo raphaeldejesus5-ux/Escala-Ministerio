@@ -16,27 +16,53 @@ export default function NovoEventoPage() {
   const [error, setError] = useState('')
   const [type, setType] = useState('service')
   const [date, setDate] = useState('')
-  const [time, setTime] = useState('09:00')
+  const [turnos, setTurnos] = useState<string[]>(['morning'])
   const [needsDrummer, setNeedsDrummer] = useState(true)
   const [needsBassist, setNeedsBassist] = useState(true)
   const [notes, setNotes] = useState('')
 
+  const toggleTurno = (turno: string) => {
+    if (turnos.includes(turno)) {
+      if (turnos.length === 1) return
+      setTurnos(turnos.filter(t => t !== turno))
+    } else {
+      setTurnos([...turnos, turno])
+    }
+  }
+
   const handleSubmit = async () => {
     if (!date) { setError('Data obrigatoria'); return }
+    if (turnos.length === 0) { setError('Selecione pelo menos um turno'); return }
     setLoading(true)
     setError('')
-    const { error } = await supabase.from('events').insert([{
-      type,
-      event_date: date,
-      event_time: time,
-      needs_drummer: needsDrummer,
-      needs_bassist: needsBassist,
-      notes,
-      published: false,
-    }])
-    if (error) { setError(error.message); setLoading(false); return }
+
+    for (const turno of turnos) {
+      const timeMap: Record<string, string> = {
+        morning: '09:00',
+        afternoon: '14:00',
+        evening: '19:00',
+      }
+      await supabase.from('events').insert([{
+        type,
+        event_date: date,
+        event_time: timeMap[turno],
+        period: turno,
+        needs_drummer: needsDrummer,
+        needs_bassist: needsBassist,
+        notes,
+        published: false,
+      }])
+    }
+
+    setLoading(false)
     router.push('/escala')
   }
+
+  const turnoOptions = [
+    { value: 'morning', label: 'Manha', emoji: '🌅', time: '09:00' },
+    { value: 'afternoon', label: 'Tarde', emoji: '☀️', time: '14:00' },
+    { value: 'evening', label: 'Noite', emoji: '🌙', time: '19:00' },
+  ]
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -44,7 +70,7 @@ export default function NovoEventoPage() {
       <main className="flex-1 overflow-auto p-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Novo Evento</h1>
-          <Card className="p-6 space-y-4">
+          <Card className="p-6 space-y-5">
             {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>}
 
             <div>
@@ -64,8 +90,26 @@ export default function NovoEventoPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Horario</label>
-              <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Turno(s)</label>
+              <p className="text-xs text-gray-400 mb-3">Selecione um ou mais turnos para este evento</p>
+              <div className="grid grid-cols-3 gap-3">
+                {turnoOptions.map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => toggleTurno(t.value)}
+                    className={`flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all ${
+                      turnos.includes(t.value)
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">{t.emoji}</span>
+                    <span className="text-sm font-medium">{t.label}</span>
+                    <span className="text-xs text-gray-400">{t.time}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -95,7 +139,7 @@ export default function NovoEventoPage() {
 
             <div className="flex gap-3 pt-2">
               <Button onClick={handleSubmit} disabled={loading} className="flex-1">
-                {loading ? 'Salvando...' : 'Criar Evento'}
+                {loading ? 'Salvando...' : turnos.length > 1 ? `Criar ${turnos.length} Eventos` : 'Criar Evento'}
               </Button>
               <Button variant="outline" onClick={() => router.push('/escala')}>
                 Cancelar
