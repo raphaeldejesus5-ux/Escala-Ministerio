@@ -24,7 +24,7 @@ export default function EscalaPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth/login'); return }
     const { data: p } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
-    setProfile(p)
+    setProfile(p); console.log('USER:', user?.email, 'PROFILE:', p)
 
     const today = new Date().toISOString().split('T')[0]
     let query = supabase
