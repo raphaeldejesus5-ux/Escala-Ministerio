@@ -56,7 +56,7 @@ export default async function RelatoriosPage() {
   const totalSwaps    = swapStats?.length ?? 0
 
   const userName = profile?.name ?? user.email ?? 'Usuário'
-  const userRole = USER_ROLE_LABELS[profile?.role ?? 'member']
+  const userRole = (USER_ROLE_LABELS as Record<string, string>)[profile?.role ?? 'member']
 
   return (
     <div className="flex min-h-screen">

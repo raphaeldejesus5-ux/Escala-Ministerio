@@ -51,7 +51,7 @@ export default async function NotificacoesPage() {
     .eq('read', false)
 
   const userName = profile?.name ?? user.email ?? 'Usuário'
-  const userRole = USER_ROLE_LABELS[profile?.role ?? 'member']
+  const userRole = (USER_ROLE_LABELS as Record<string, string>)[profile?.role ?? 'member']
 
   const unread = notifications?.filter((n: any) => !n.read) ?? []
   const read   = notifications?.filter((n: any) => n.read)  ?? []

@@ -26,7 +26,7 @@ export default async function TrocasPage() {
 
   const isLeader = ['admin', 'leader'].includes(profile?.role ?? '')
   const userName = profile?.name ?? user.email ?? 'Usuário'
-  const userRole = USER_ROLE_LABELS[profile?.role ?? 'member']
+  const userRole = (USER_ROLE_LABELS as Record<string, string>)[profile?.role ?? 'member']
 
   // Líderes veem todas; membros veem as próprias
   let query = supabase

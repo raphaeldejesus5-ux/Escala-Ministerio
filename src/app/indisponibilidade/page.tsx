@@ -90,7 +90,7 @@ export default function IndisponibilidadePage() {
     <div className="flex min-h-screen">
       <Sidebar
         userName={profile?.name ?? 'Usuário'}
-        userRole={USER_ROLE_LABELS[profile?.role ?? 'member']}
+        userRole={(USER_ROLE_LABELS as Record<string, string>)[profile?.role ?? 'member']}
       />
       <main className="flex-1 p-6">
         <div className="flex items-center justify-between mb-6">

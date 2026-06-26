@@ -144,7 +144,7 @@ export default function SugestaoPage() {
     <div className="flex min-h-screen">
       <Sidebar
         userName={profile?.name ?? 'Usuário'}
-        userRole={USER_ROLE_LABELS[profile?.role ?? 'member']}
+        userRole={(USER_ROLE_LABELS as Record<string, string>)[profile?.role ?? 'member']}
       />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
