@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
@@ -37,7 +37,7 @@ export default function EscalaPage() {
 
     const { data: ev } = await query.limit(50)
     setEvents(ev || [])
-    setLoading(false)
+    setLoading(false); console.log("EVENTOS CARREGADOS:", ev)
   }
 
   useEffect(() => { fetchAll() }, [aba])
@@ -152,7 +152,7 @@ export default function EscalaPage() {
                         )}
                         {event.period && (
                           <span className="text-xs text-gray-400 capitalize">
-                            {event.period === 'morning' ? '🌅 Manha' : event.period === 'afternoon' ? '☀️ Tarde' : '🌙 Noite'}
+                            {event.period === 'morning' ? '?? Manha' : event.period === 'afternoon' ? '?? Tarde' : '?? Noite'}
                           </span>
                         )}
                         {event.published ? (
@@ -169,7 +169,7 @@ export default function EscalaPage() {
                       <div className="grid grid-cols-2 gap-3 mt-2">
                         {event.needs_drummer && (
                           <div className="flex items-center gap-2">
-                            <span className="text-base">🥁</span>
+                            <span className="text-base">??</span>
                             {drummer ? (
                               <div>
                                 <p className="text-sm font-medium text-gray-800">{drummer.profiles?.name}</p>
@@ -182,7 +182,7 @@ export default function EscalaPage() {
                         )}
                         {event.needs_bassist && (
                           <div className="flex items-center gap-2">
-                            <span className="text-base">🎸</span>
+                            <span className="text-base">??</span>
                             {bassist ? (
                               <div>
                                 <p className="text-sm font-medium text-gray-800">{bassist.profiles?.name}</p>
