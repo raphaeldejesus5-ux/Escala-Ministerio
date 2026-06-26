@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
 import { Card } from '@/components/ui/Card'
 
 export default function NovoIntegrantePage() {
@@ -15,23 +14,19 @@ export default function NovoIntegrantePage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({
-    name: '',
-    phone: '',
-    instrument: 'drums',
-    experience: 'intermediate',
-    status: 'active',
-    notes: '',
-  })
-
-  const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [instrument, setInstrument] = useState('drums')
+  const [experience, setExperience] = useState('intermediate')
+  const [status, setStatus] = useState('active')
 
   const handleSubmit = async () => {
+    if (!name.trim()) { setError('Nome obrigatorio'); return }
     setLoading(true)
     setError('')
-    const { error } = await supabase.from('ministry_members').insert([form])
+    const { error } = await supabase.from('ministry_members').insert([{
+      name, phone, instrument, experience, status
+    }])
     if (error) { setError(error.message); setLoading(false); return }
     router.push('/integrantes')
   }
@@ -45,36 +40,36 @@ export default function NovoIntegrantePage() {
           <Card className="p-6 space-y-4">
             {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo</label>
-              <Input name="name" value={form.name} onChange={handleChange} placeholder="Nome do musico" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo *</label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nome do musico" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-              <Input name="phone" value={form.phone} onChange={handleChange} placeholder="(00) 00000-0000" />
+              <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Instrumento</label>
-              <Select name="instrument" value={form.instrument} onChange={handleChange}>
+              <select value={instrument} onChange={e => setInstrument(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="drums">Bateria</option>
                 <option value="bass">Baixo</option>
                 <option value="both">Ambos</option>
-              </Select>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Experiencia</label>
-              <Select name="experience" value={form.experience} onChange={handleChange}>
+              <select value={experience} onChange={e => setExperience(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="beginner">Iniciante</option>
                 <option value="intermediate">Intermediario</option>
                 <option value="advanced">Avancado</option>
-              </Select>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <Select name="status" value={form.status} onChange={handleChange}>
+              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="active">Ativo</option>
                 <option value="inactive">Inativo</option>
                 <option value="training">Em treinamento</option>
-              </Select>
+              </select>
             </div>
             <div className="flex gap-3 pt-2">
               <Button onClick={handleSubmit} disabled={loading} className="flex-1">
