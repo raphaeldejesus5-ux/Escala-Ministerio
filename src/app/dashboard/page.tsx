@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { Users, Calendar, ArrowLeftRight, Bell, CheckCircle2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
@@ -25,12 +24,9 @@ export default function DashboardPage() {
     const fetchAll = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth/login'); return }
-
       const { data: p } = await supabase.from('profiles').select('name, role').eq('id', user.id).single()
       setProfile(p)
-
       const today = new Date().toISOString().split('T')[0]
-
       const [
         { count: members },
         { count: events },
@@ -44,7 +40,6 @@ export default function DashboardPage() {
         supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('profile_id', user.id).eq('read', false),
         supabase.from('events').select('*, schedule_slots(id, role, profiles(name))').gte('event_date', today).order('event_date', { ascending: true }).limit(5),
       ])
-
       setTotalMembers(members || 0)
       setTotalEvents(events || 0)
       setPendingSwaps(swaps || 0)
@@ -68,16 +63,15 @@ export default function DashboardPage() {
   }
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
   const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab']
-
   const today = new Date()
   const dayOfWeek = ['domingo','segunda-feira','terca-feira','quarta-feira','quinta-feira','sexta-feira','sabado'][today.getDay()]
   const dateStr = `${dayOfWeek}, ${today.getDate()} de ${['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][today.getMonth()]}`
 
   const kpis = [
-    { label: 'Integrantes ativos', value: totalMembers, icon: Users, color: 'text-primary-600', bg: 'bg-primary-50' },
-    { label: 'Proximos eventos', value: totalEvents, icon: Calendar, color: 'text-teal-600', bg: 'bg-teal-50' },
-    { label: 'Trocas pendentes', value: pendingSwaps, icon: ArrowLeftRight, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Alertas nao lidos', value: unreadNotifs, icon: Bell, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Integrantes ativos', value: totalMembers, icon: Users, color: 'text-primary-600', bg: 'bg-primary-50', href: '/integrantes' },
+    { label: 'Proximos eventos', value: totalEvents, icon: Calendar, color: 'text-teal-600', bg: 'bg-teal-50', href: '/escala' },
+    { label: 'Trocas pendentes', value: pendingSwaps, icon: ArrowLeftRight, color: 'text-amber-600', bg: 'bg-amber-50', href: '/trocas' },
+    { label: 'Alertas nao lidos', value: unreadNotifs, icon: Bell, color: 'text-red-600', bg: 'bg-red-50', href: '/notificacoes' },
   ]
 
   return (
@@ -94,18 +88,24 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-4 gap-4 mb-8">
-              {kpis.map(({ label, value, icon: Icon, color, bg }) => (
-                <Card key={label} className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center`}>
-                      <Icon className={`w-5 h-5 ${color}`} />
+              {kpis.map(({ label, value, icon: Icon, color, bg, href }) => (
+                <div
+                  key={label}
+                  onClick={() => router.push(href)}
+                  className="cursor-pointer group"
+                >
+                  <Card className="p-4 hover:shadow-md hover:border-primary-200 transition-all group-hover:scale-105">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center`}>
+                        <Icon className={`w-5 h-5 ${color}`} />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900">{value}</p>
+                        <p className="text-xs text-gray-500">{label}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold text-gray-900">{value}</p>
-                      <p className="text-xs text-gray-500">{label}</p>
-                    </div>
-                  </div>
-                </Card>
+                  </Card>
+                </div>
               ))}
             </div>
 
@@ -116,7 +116,11 @@ export default function DashboardPage() {
                   <Link href="/escala" className="text-xs text-primary-600 hover:underline">Ver todos</Link>
                 </div>
                 {upcomingEvents.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-4">Nenhum evento proximo</p>
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Calendar className="w-8 h-8 text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-400">Nenhum evento proximo</p>
+                    <Link href="/escala/novo" className="text-xs text-primary-600 hover:underline mt-2">Criar evento</Link>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     {upcomingEvents.map((event: any) => {
@@ -125,7 +129,7 @@ export default function DashboardPage() {
                       const drummer = slots.find((s: any) => s.role === 'drummer')
                       const bassist = slots.find((s: any) => s.role === 'bassist')
                       return (
-                        <div key={event.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                        <div key={event.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all cursor-pointer" onClick={() => router.push('/escala')}>
                           <div className="w-10 h-10 rounded-lg bg-primary-50 flex flex-col items-center justify-center flex-shrink-0">
                             <span className="text-sm font-bold text-primary-600 leading-tight">{date.getDate()}</span>
                             <span className="text-xs text-gray-400">{monthNames[date.getMonth()]}</span>
@@ -136,17 +140,14 @@ export default function DashboardPage() {
                                 {typeLabel[event.type] ?? event.type}
                               </span>
                               <span className="text-xs text-gray-400">{dayNames[date.getDay()]}</span>
+                              {event.event_time && <span className="text-xs text-gray-400">{event.event_time.substring(0,5)}</span>}
                             </div>
                             <div className="flex gap-3 mt-1">
                               {event.needs_drummer && (
-                                <span className="text-xs text-gray-500">
-                                  🥁 {drummer?.profiles?.name ?? <span className="text-red-400">Vazio</span>}
-                                </span>
+                                <span className="text-xs text-gray-500">🥁 {drummer?.profiles?.name ?? '—'}</span>
                               )}
                               {event.needs_bassist && (
-                                <span className="text-xs text-gray-500">
-                                  🎸 {bassist?.profiles?.name ?? <span className="text-red-400">Vazio</span>}
-                                </span>
+                                <span className="text-xs text-gray-500">🎸 {bassist?.profiles?.name ?? '—'}</span>
                               )}
                             </div>
                           </div>
