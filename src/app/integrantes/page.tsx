@@ -1,147 +1,104 @@
+﻿'use client'
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
-import { UserPlus, Phone } from 'lucide-react'
-import {
-  INSTRUMENT_LABELS, STATUS_LABELS, EXPERIENCE_LABELS,
-  USER_ROLE_LABELS, type Profile
-} from '@/types'
-import Link from 'next/link'
+import { UserPlus } from 'lucide-react'
 
-const statusBadge: Record<string, 'green' | 'red' | 'amber'> = {
-  active:   'green',
-  inactive: 'red',
-  training: 'amber',
-}
+export default function IntegrantesPage() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [members, setMembers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-const instrumentBadge: Record<string, 'purple' | 'teal' | 'blue'> = {
-  drums: 'purple',
-  bass:  'teal',
-  both:  'blue',
-}
-
-export default async function IntegrantesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
-
-  const { data: profile } = await supabase
-    .from('profiles').select('name, role').eq('id', user.id).single()
-
-  const { data: members } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('name')
-
-  const userName = profile?.name ?? user.email ?? 'Usuário'
-  const userRole = (USER_ROLE_LABELS as Record<string, string>)[profile?.role ?? 'member']
-  const isLeader = ['admin', 'leader'].includes(profile?.role ?? '')
-
-  // Conta serviços por integrante nos últimos 30 dias
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const { data: recentSlots } = await supabase
-    .from('schedule_slots')
-    .select('profile_id, events(event_date)')
-    .gte('events.event_date', thirtyDaysAgo)
-    .eq('status', 'confirmed')
-
-  const serviceCount: Record<string, number> = {}
-  recentSlots?.forEach((slot: any) => {
-    if (slot.events) {
-      serviceCount[slot.profile_id] = (serviceCount[slot.profile_id] ?? 0) + 1
+  useEffect(() => {
+    const fetchMembers = async () => {
+      const { data } = await supabase
+        .from('ministry_members')
+        .select('*')
+        .order('name')
+      setMembers(data || [])
+      setLoading(false)
     }
-  })
+    fetchMembers()
+  }, [])
+
+  const instrumentLabel: Record<string, string> = {
+    drums: 'Bateria',
+    bass: 'Baixo',
+    both: 'Ambos',
+  }
+
+  const statusLabel: Record<string, string> = {
+    active: 'Ativo',
+    inactive: 'Inativo',
+    training: 'Em treinamento',
+  }
+
+  const statusColor: Record<string, 'green' | 'red' | 'amber'> = {
+    active: 'green',
+    inactive: 'red',
+    training: 'amber',
+  }
+
+  const experienceLabel: Record<string, string> = {
+    beginner: 'Iniciante',
+    intermediate: 'Intermediario',
+    advanced: 'Avancado',
+  }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar userName={userName} userRole={userRole} />
-      <main className="flex-1 p-6">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <main className="flex-1 overflow-auto p-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Integrantes</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{members?.length ?? 0} cadastrados</p>
+            <h1 className="text-2xl font-bold text-gray-900">Integrantes</h1>
+            <p className="text-gray-500 mt-1">Gerencie os musicos do ministerio</p>
           </div>
-          {isLeader && (
-            <Link href="/integrantes/novo">
-              <Button size="sm">
-                <UserPlus className="w-4 h-4" />
-                Cadastrar
-              </Button>
-            </Link>
-          )}
+          <Button onClick={() => router.push('/integrantes/novo')}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Novo Integrante
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {members?.map((member: Profile) => {
-            const count = serviceCount[member.id] ?? 0
-            const overloaded = count >= 4
-            const inactive = count === 0
-
-            return (
-              <Card key={member.id} className="hover:shadow-md transition-shadow">
-                <div className="flex items-start gap-3">
-                  <Avatar name={member.name} size="lg" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{member.name}</p>
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      <Badge variant={instrumentBadge[member.instrument]}>
-                        {INSTRUMENT_LABELS[member.instrument]}
-                      </Badge>
-                      <Badge variant={statusBadge[member.status]}>
-                        {STATUS_LABELS[member.status]}
-                      </Badge>
-                    </div>
+        {loading ? (
+          <p className="text-gray-500">Carregando...</p>
+        ) : members.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gray-500">Nenhum integrante cadastrado ainda.</p>
+            <Button className="mt-4" onClick={() => router.push('/integrantes/novo')}>
+              Cadastrar primeiro integrante
+            </Button>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {members.map((member) => (
+              <Card key={member.id} className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg">
+                    {member.name ? member.name.charAt(0).toUpperCase() : '?'}
                   </div>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-sm">
                   <div>
-                    <span className="text-gray-500">Nível: </span>
-                    <span className="text-gray-700">{EXPERIENCE_LABELS[member.experience]}</span>
-                  </div>
-                  <div className={`font-medium text-xs px-2 py-0.5 rounded-full ${
-                    overloaded ? 'bg-red-50 text-red-700' :
-                    inactive   ? 'bg-amber-50 text-amber-700' :
-                                 'bg-green-50 text-green-700'
-                  }`}>
-                    {count}× no mês
+                    <p className="font-semibold text-gray-900">{member.name || 'Sem nome'}</p>
+                    <p className="text-sm text-gray-500">{instrumentLabel[member.instrument] || member.instrument} • {experienceLabel[member.experience] || member.experience}</p>
                   </div>
                 </div>
-
-                {member.phone && (
-                  <a
-                    href={`https://wa.me/${member.phone.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-600 transition-colors"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    {member.phone}
-                  </a>
-                )}
-
-                {overloaded && (
-                  <p className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded-md">
-                    ⚠️ Muitos serviços este mês
-                  </p>
-                )}
-                {!overloaded && inactive && (
-                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
-                    🕐 Sem serviço este mês
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  <Badge color={statusColor[member.status] || 'green'}>
+                    {statusLabel[member.status] || member.status}
+                  </Badge>
+                </div>
               </Card>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   )
 }
-
