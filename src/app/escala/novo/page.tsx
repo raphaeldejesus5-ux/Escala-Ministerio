@@ -9,6 +9,18 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 
+const TURNOS = [
+  { value: 'morning', label: 'Manha', emoji: '🌅', defaultEvent: '09:00', defaultArrival: '08:00' },
+  { value: 'afternoon', label: 'Tarde', emoji: '☀️', defaultEvent: '14:00', defaultArrival: '13:00' },
+  { value: 'evening', label: 'Noite', emoji: '🌙', defaultEvent: '19:00', defaultArrival: '18:00' },
+]
+
+type TurnoConfig = {
+  selected: boolean
+  eventTime: string
+  arrivalTime: string
+}
+
 export default function NovoEventoPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -16,52 +28,69 @@ export default function NovoEventoPage() {
   const [error, setError] = useState('')
   const [type, setType] = useState('service')
   const [date, setDate] = useState('')
-  const [turnos, setTurnos] = useState<string[]>(['morning'])
-  const [eventTime, setEventTime] = useState('09:00')
-  const [arrivalTime, setArrivalTime] = useState('08:30')
   const [needsDrummer, setNeedsDrummer] = useState(true)
   const [needsBassist, setNeedsBassist] = useState(true)
   const [notes, setNotes] = useState('')
+  const [turnos, setTurnos] = useState<Record<string, TurnoConfig>>({
+    morning: { selected: false, eventTime: '09:00', arrivalTime: '08:00' },
+    afternoon: { selected: false, eventTime: '14:00', arrivalTime: '13:00' },
+    evening: { selected: false, eventTime: '19:00', arrivalTime: '18:00' },
+  })
 
   const toggleTurno = (turno: string) => {
-    if (turnos.includes(turno)) {
-      if (turnos.length === 1) return
-      setTurnos(turnos.filter(t => t !== turno))
-    } else {
-      setTurnos([...turnos, turno])
-    }
+    setTurnos(prev => ({
+      ...prev,
+      [turno]: { ...prev[turno], selected: !prev[turno].selected }
+    }))
   }
+
+  const updateTurno = (turno: string, field: 'eventTime' | 'arrivalTime', value: string) => {
+    setTurnos(prev => ({
+      ...prev,
+      [turno]: { ...prev[turno], [field]: value }
+    }))
+  }
+
+  const selectedTurnos = TURNOS.filter(t => turnos[t.value].selected)
 
   const handleSubmit = async () => {
     if (!date) { setError('Data obrigatoria'); return }
-    if (turnos.length === 0) { setError('Selecione pelo menos um turno'); return }
+    if (selectedTurnos.length === 0) { setError('Selecione pelo menos um turno'); return }
     setLoading(true)
     setError('')
 
-    for (const turno of turnos) {
-      const { error } = await supabase.from('events').insert([{
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .insert([{
         type,
         event_date: date,
-        event_time: eventTime,
-        arrival_time: arrivalTime,
-        period: turno,
+        event_time: turnos[selectedTurnos[0].value].eventTime,
         needs_drummer: needsDrummer,
         needs_bassist: needsBassist,
         notes,
         published: false,
       }])
-      if (error) { setError(error.message); setLoading(false); return }
+      .select()
+      .single()
+
+    if (eventError || !event) {
+      setError(eventError?.message || 'Erro ao criar evento')
+      setLoading(false)
+      return
+    }
+
+    for (const t of selectedTurnos) {
+      await supabase.from('event_turns').insert([{
+        event_id: event.id,
+        period: t.value,
+        event_time: turnos[t.value].eventTime,
+        arrival_time: turnos[t.value].arrivalTime,
+      }])
     }
 
     setLoading(false)
     router.push('/escala')
   }
-
-  const turnoOptions = [
-    { value: 'morning', label: 'Manha', emoji: '🌅' },
-    { value: 'afternoon', label: 'Tarde', emoji: '☀️' },
-    { value: 'evening', label: 'Noite', emoji: '🌙' },
-  ]
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -88,37 +117,49 @@ export default function NovoEventoPage() {
               <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hora do evento</label>
-                <Input type="time" value={eventTime} onChange={e => setEventTime(e.target.value)} />
-                <p className="text-xs text-gray-400 mt-1">Horario de inicio do culto</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hora de chegada</label>
-                <Input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
-                <p className="text-xs text-gray-400 mt-1">Horario que o musico deve chegar</p>
-              </div>
-            </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Turno(s)</label>
-              <p className="text-xs text-gray-400 mb-3">Selecione um ou mais turnos para este evento</p>
-              <div className="grid grid-cols-3 gap-3">
-                {turnoOptions.map(t => (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => toggleTurno(t.value)}
-                    className={`flex flex-col items-center gap-1 p-4 rounded-xl border-2 transition-all ${
-                      turnos.includes(t.value)
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
-                        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="text-2xl">{t.emoji}</span>
-                    <span className="text-sm font-medium">{t.label}</span>
-                  </button>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Turnos</label>
+              <p className="text-xs text-gray-400 mb-3">Selecione os turnos e defina os horarios de cada um</p>
+              <div className="space-y-3">
+                {TURNOS.map(t => (
+                  <div key={t.value} className={`border-2 rounded-xl transition-all ${turnos[t.value].selected ? 'border-primary-400 bg-primary-50' : 'border-gray-200 bg-white'}`}>
+                    <button
+                      type="button"
+                      onClick={() => toggleTurno(t.value)}
+                      className="w-full flex items-center gap-3 p-4"
+                    >
+                      <span className="text-xl">{t.emoji}</span>
+                      <span className={`text-sm font-medium ${turnos[t.value].selected ? 'text-primary-700' : 'text-gray-600'}`}>
+                        {t.label}
+                      </span>
+                      <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${turnos[t.value].selected ? 'border-primary-500 bg-primary-500' : 'border-gray-300'}`}>
+                        {turnos[t.value].selected && <div className="w-2 h-2 bg-white rounded-full" />}
+                      </div>
+                    </button>
+
+                    {turnos[t.value].selected && (
+                      <div className="px-4 pb-4 grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Hora do evento</label>
+                          <input
+                            type="time"
+                            value={turnos[t.value].eventTime}
+                            onChange={e => updateTurno(t.value, 'eventTime', e.target.value)}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Hora de chegada</label>
+                          <input
+                            type="time"
+                            value={turnos[t.value].arrivalTime}
+                            onChange={e => updateTurno(t.value, 'arrivalTime', e.target.value)}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -128,11 +169,11 @@ export default function NovoEventoPage() {
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={needsDrummer} onChange={e => setNeedsDrummer(e.target.checked)} className="w-4 h-4 rounded" />
-                  <span className="text-sm text-gray-700">🥁 Bateria</span>
+                  <span className="text-sm text-gray-700">Bateria</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={needsBassist} onChange={e => setNeedsBassist(e.target.checked)} className="w-4 h-4 rounded" />
-                  <span className="text-sm text-gray-700">🎸 Baixo</span>
+                  <span className="text-sm text-gray-700">Baixo</span>
                 </label>
               </div>
             </div>
@@ -150,7 +191,7 @@ export default function NovoEventoPage() {
 
             <div className="flex gap-3 pt-2">
               <Button onClick={handleSubmit} disabled={loading} className="flex-1">
-                {loading ? 'Salvando...' : turnos.length > 1 ? `Criar ${turnos.length} Eventos` : 'Criar Evento'}
+                {loading ? 'Salvando...' : `Criar Evento${selectedTurnos.length > 1 ? ` (${selectedTurnos.length} turnos)` : ''}`}
               </Button>
               <Button variant="outline" onClick={() => router.push('/escala')}>
                 Cancelar
