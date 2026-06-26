@@ -29,7 +29,7 @@ export default function EscalaPage() {
     const today = new Date().toISOString().split('T')[0]
     let query = supabase
       .from('events')
-      .select('*, schedule_slots(id, role, status, profiles(id, name))')
+      .select('*')
       .order('event_date', { ascending: aba !== 'passados' })
 
     if (aba === 'proximos') query = query.gte('event_date', today)
