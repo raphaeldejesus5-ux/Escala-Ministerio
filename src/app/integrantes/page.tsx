@@ -28,6 +28,14 @@ export default function IntegrantesPage() {
 
   useEffect(() => { fetchAll() }, [])
 
+  const handleDeleteProfile = async (id: string, name: string) => {
+    if (!confirm('Excluir ' + name + '? Isso remove o acesso ao app!')) return
+    setDeleting(id)
+    await supabase.from('profiles').delete().eq('id', id)
+    await fetchAll()
+    setDeleting(null)
+  }
+
   const handleDeleteMember = async (id: string, name: string) => {
     if (!confirm('Excluir ' + name + '?')) return
     setDeleting(id)
@@ -47,6 +55,17 @@ export default function IntegrantesPage() {
   }
 
   const total = profiles.length + members.length
+
+  const DeleteButton = ({ id, name, onDelete }: { id: string, name: string, onDelete: (id: string, name: string) => void }) => (
+    <button
+      onClick={() => onDelete(id, name)}
+      disabled={deleting === id}
+      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+      title="Excluir"
+    >
+      <Trash2 className="w-4 h-4" />
+    </button>
+  )
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -97,6 +116,7 @@ export default function IntegrantesPage() {
                           {statusLabel[p.status] || p.status}
                         </Badge>
                         <Badge color="blue">Com login</Badge>
+                        <DeleteButton id={p.id} name={p.name} onDelete={handleDeleteProfile} />
                       </div>
                     </Card>
                   ))}
@@ -126,13 +146,7 @@ export default function IntegrantesPage() {
                         <Badge color={statusColor[m.status] || 'green'}>
                           {statusLabel[m.status] || m.status}
                         </Badge>
-                        <button
-                          onClick={() => handleDeleteMember(m.id, m.name)}
-                          disabled={deleting === m.id}
-                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <DeleteButton id={m.id} name={m.name} onDelete={handleDeleteMember} />
                       </div>
                     </Card>
                   ))}
