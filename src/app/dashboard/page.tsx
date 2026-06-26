@@ -62,7 +62,7 @@ export default async function DashboardPage() {
   ])
 
   const userName = profile?.name ?? user.email ?? 'Usuário'
-  const userRole = USER_ROLE_LABELS[(profile?.role ?? 'member') as UserRole]
+  const userRole = (USER_ROLE_LABELS as Record<string, string>)[profile?.role ?? 'member']
 
   const kpis = [
     { label: 'Integrantes ativos', value: totalMembers ?? 0, icon: Users, color: 'text-primary-600', bg: 'bg-primary-50' },
